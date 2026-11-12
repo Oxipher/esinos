@@ -1,0 +1,8 @@
+#include "esinos.h"
+
+void gantt_add(const char *name, int start, int end) {
+ printf("| %s %d-%d ", name, start, end);
+}
+void gantt_finish(void) {
+ printf("|\n");
+}
