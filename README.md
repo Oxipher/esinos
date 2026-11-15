@@ -11,7 +11,7 @@ The simulator calculates and verifies key performance metrics, specifically aver
 
 ## Team Members
 * **Member A:** [Name] - [Assigned Tasks/Schedulers]
-* **Member B:** Yasmine Senhaji - [Assigned Tasks/Schedulers]
+* **Member B:** [Name] - [Assigned Tasks/Schedulers]
 * **Member C:** Lilia Jaloun - Workloads, Metrics Calculator, and Test Automation
 
 ## Project Structure
