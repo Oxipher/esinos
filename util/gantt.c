@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "esinos.h"
 
 void gantt_add(const char *name, int start, int end) {
