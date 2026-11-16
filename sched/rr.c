@@ -1,6 +1,7 @@
 #include "esinos.h"
 
-#define QCAP 64   /* circular queue: one slot per quantum slice, plenty for week 1 */
+#define QCAP MAX_PROCS   /* one slot per process is enough: a process
+                            is never twice in the queue at the same time */
 
 void rr_run(int quantum_ms) {
     int q[QCAP];
@@ -12,18 +13,23 @@ void rr_run(int quantum_ms) {
         remaining[i] = procs[i].burst_ms;
 
     while (done < n_procs) {
-        /* FIRST: enqueue arrivals with arrival_ms <= t */
+        /* FIRST: enqueue every process arrived by time t */
         while (next < n_procs && procs[next].arrival_ms <= t)
-            if (count < QCAP) q[(head + count++) % QCAP] = next++;
+            q[(head + count++) % QCAP] = next++;
 
-        int p = q[head]; head = (head + 1) % QCAP; count--;        /* dequeue */
+        if (count == 0) {                /* CPU idle: jump to next arrival */
+            t = procs[next].arrival_ms;
+            continue;
+        }
+
+        int p = q[head]; head = (head + 1) % QCAP; count--;   /* dequeue */
         int run = (quantum_ms < remaining[p]) ? quantum_ms : remaining[p];
         gantt_add(procs[p].name, t, t + run);
         t += run;
         remaining[p] -= run;
 
         /* THEN: requeue the current process if not finished */
-        if (remaining[p] > 0) { if (count < QCAP) q[(head + count++) % QCAP] = p; }
+        if (remaining[p] > 0) q[(head + count++) % QCAP] = p;
         else done++;
     }
     gantt_finish();
