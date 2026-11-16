@@ -1,0 +1,5 @@
+esinos
+main
+*.o
+tests/*.log
+.vscode/
