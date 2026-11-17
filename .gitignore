@@ -1,5 +1,5 @@
 esinos
 main
 *.o
-tests/*.log
+tests/out.txt
 .vscode/
