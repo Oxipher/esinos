@@ -24,3 +24,25 @@ static const Proc WL_P[] = {
     {"P5", 0, 5, 2},
 };
 
+void load_workloads(int set) {
+    const Proc *src;
+    int count;
+
+    if (set == 1) { 
+        src = WL_B; 
+        count = 4; 
+    } else if (set == 2) { 
+        src = WL_P; 
+        count = 5; 
+    } else { 
+        src = WL_A; 
+        count = 3; 
+    }
+
+    for (int i = 0; i < count; i++) {
+        procs[i] = src[i];
+        procs[i].finish_ms = 0;
+    }
+    
+    n_procs = count;
+}
