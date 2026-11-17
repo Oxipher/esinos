@@ -1,7 +1,6 @@
 #include "esinos.h"
 void sjf_run(void) {
-/* SJF non preemptif: le plus court burst d'abord. Semaine 1 :
-toutes les arrivees valent 0, donc trier par burst suffit. */
+
 for (int i=0; i < n_procs - 1; i++)
 for (int j=0; j < n_procs - 1 - i; j++)
 if (procs[j].burst_ms > procs[j + 1].burst_ms) {
