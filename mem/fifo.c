@@ -7,6 +7,7 @@ ESINOS - Semaine 2 : Fiche équipe mémoire
 
 #include <stdio.h>
 #include "mem.h"
+
 /* FIFO est une file : imprimer les cadres du plus ancien au plus
  * recent, en partant du curseur next_victim, pour que la trace soit
  * la meme que celle de la fiche ([2, 3, 4] apres l'eviction de 1). */

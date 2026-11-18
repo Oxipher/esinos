@@ -9,3 +9,12 @@ test: esinos
 sh tests/run.sh
 clean:
 rm -f esinos *.o
+
+MEM_SRC = mem/translate.c mem/fifo.c mem/lru.c mem/optimal.c mem/tlb.c
+CFLAGS  = -Wall -Wextra -I. -Imem
+
+test_memory: tests/test_memory.c $(MEM_SRC)
+	$(CC) $(CFLAGS) -o $@ tests/test_memory.c $(MEM_SRC)
+
+test: test_memory
+	./test_memory && ./tests/run.sh
