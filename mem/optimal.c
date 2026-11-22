@@ -1,13 +1,5 @@
-/* mem/optimal.c - Optimal (Membre B, jour 12).
- * Evince la page dont le prochain usage est le plus lointain dans le
- * futur : l'algorithme regarde la suite de la chaine, ce qu'un vrai
- * systeme ne peut pas faire. C'est precisement pourquoi Optimal sert
- * de plancher theorique qui mesure FIFO et LRU. */
 #include "esinos.h"
 #include "mem.h"
-/* Prochain usage de la page dans refs a partir de l'indice from ;
- * renvoie n_refs si la page n'est plus jamais utilisee, ce qui est
- * par definition l'usage le plus lointain possible. */
 static int next_use(const int *refs, int n_refs, int from, int page) {
  for (int i = from; i < n_refs; i++) {
  if (refs[i] == page) { return i; }
@@ -59,8 +51,6 @@ int mem_run_optimal(const int *refs, int n_refs, int n_frames, int verbose) {
  }
  return faults;
 }
-/* La table vedette du rapport : les trois politiques cote a cote,
- * de 1 a n_frames cadres. Optimal doit toujours etre le minimum. */
 void mem_compare_all(const int *refs, int n_refs, int n_frames) {
  printf("cadres | FIFO | LRU | Optimal\n");
  printf("-------+------+-----+--------\n");
