@@ -1,20 +1,39 @@
 CC = gcc
-CFLAGS = -I. -Wall -Wextra
+CFLAGS = -Wall -Wextra -I. -Imem -Ifs
+
 SRC = main.c workload.c \
-util/gantt.c util/metrics.c \
-sched/fcfs.c sched/sjf.c sched/rr.c sched/priority.c
-esinos: $(SRC) esinos.h
-$(CC) $(CFLAGS) $(SRC) -o esinos
-test: esinos
-sh tests/run.sh
-clean:
-rm -f esinos *.o
+      util/gantt.c util/metrics.c \
+      sched/fcfs.c sched/sjf.c sched/rr.c sched/priority.c
 
 MEM_SRC = mem/translate.c mem/fifo.c mem/lru.c mem/optimal.c mem/tlb.c
-CFLAGS  = -Wall -Wextra -I. -Imem
+
+FS_SRC = fs/fs.c
+
+DEMO_SRC = workload.c util/gantt.c util/metrics.c \
+           sched/fcfs.c sched/sjf.c sched/rr.c sched/priority.c \
+           $(MEM_SRC) $(FS_SRC)
+
+all: esinos test_memory demo fs_check
+
+esinos: $(SRC) esinos.h
+    $(CC) $(CFLAGS) $(SRC) -o esinos
 
 test_memory: tests/test_memory.c $(MEM_SRC)
-	$(CC) $(CFLAGS) -o $@ tests/test_memory.c $(MEM_SRC)
+    $(CC) $(CFLAGS) -o $@ tests/test_memory.c $(MEM_SRC)
 
-test: test_memory
-	./test_memory && ./tests/run.sh
+demo: demo.c $(DEMO_SRC) esinos.h mem/mem.h fs/fs.h
+    $(CC) $(CFLAGS) -o $@ demo.c $(DEMO_SRC)
+
+fs_check: fs/fs_check.c $(FS_SRC) fs/fs.h
+    $(CC) $(CFLAGS) -o $@ fs/fs_check.c $(FS_SRC)
+
+test: esinos test_memory demo fs_check
+    ./test_memory
+    ./fs_check
+    ./demo
+    sh tests/run.sh
+
+clean:
+    rm -f esinos test_memory demo fs_check *.o disk.img
+
+.PHONY: all test clean
