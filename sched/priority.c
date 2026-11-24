@@ -1,7 +1,7 @@
 #include "esinos.h"
 
 void prio_run(void) {
-    
+
     for (int i = 0; i < n_procs - 1; i++) {
         for (int j = 0; j < n_procs - 1 - i; j++) {
             if (procs[j].priority > procs[j + 1].priority) {
