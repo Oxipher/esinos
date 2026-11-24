@@ -17,7 +17,7 @@ void rr_run(int quantum_ms) {
             }
         }
 
-       
+
         if (count == 0) {
             if (next < n_procs) {
                 t = procs[next].arrival_ms;
@@ -27,7 +27,7 @@ void rr_run(int quantum_ms) {
             }
         }
 
-       
+
         int p = q[head];
         head = (head + 1) % QCAP;
         count--;
@@ -37,7 +37,7 @@ void rr_run(int quantum_ms) {
         t += run;
         remaining[p] -= run;
 
-       
+
         while (next < n_procs && procs[next].arrival_ms <= t) {
             if (count < QCAP) {
                 q[(head + count++) % QCAP] = next++;
