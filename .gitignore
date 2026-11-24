@@ -1,5 +1,9 @@
 esinos
 main
+test_memory
+demo
+fs_check
+disk.img
 *.o
 tests/out.txt
 .vscode/
