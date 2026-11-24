@@ -3,6 +3,8 @@ main
 test_memory
 demo
 fs_check
+test_fs
+menu
 disk.img
 *.o
 tests/out.txt
