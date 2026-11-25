@@ -1,50 +1,49 @@
-#include "esinos.h"
+#include <stdio.h>
 #include "mem.h"
 
 PageTableEntry mem_table[NUM_PAGES];
 
 void mem_init(void) {
     for (int p = 0; p < NUM_PAGES; p++) {
-        mem_table[p].frame = -1;       
-        mem_table[p].valid = 1;        
-        mem_table[p].last_access = -1; 
+        mem_table[p].frame = -1;
+        mem_table[p].valid = 0;
+        mem_table[p].last_access = 0;
     }
 }
 
 int mem_translate(int logical_addr, int *phys_addr) {
-    if (logical_addr < 0) {
-        return MEM_BAD_ADDR;
-    }
     int page = logical_addr / PAGE_SIZE;
     int offset = logical_addr % PAGE_SIZE;
 
-    if (page >= NUM_PAGES || !mem_table[page].valid) {
-        return MEM_BAD_ADDR; 
+    if (logical_addr < 0 || page >= NUM_PAGES) {
+        return MEM_BAD_ADDR;
     }
-    if (mem_table[page].frame < 0) {
-        return MEM_PAGE_FAULT; 
+    if (!mem_table[page].valid) {
+        return MEM_PAGE_FAULT;
     }
     *phys_addr = mem_table[page].frame * PAGE_SIZE + offset;
     return MEM_OK;
 }
 
 int mem_load(int page) {
-    if (page < 0 || page >= NUM_PAGES || !mem_table[page].valid) {
+    if (page < 0 || page >= NUM_PAGES) {
         return -1;
     }
-    if (mem_table[page].frame >= 0) {
-        return mem_table[page].frame; 
+    if (mem_table[page].valid) {
+        return mem_table[page].frame;
     }
     for (int f = 0; f < NUM_FRAMES; f++) {
         int taken = 0;
         for (int p = 0; p < NUM_PAGES; p++) {
-            if (mem_table[p].frame == f) {
+            if (mem_table[p].valid && mem_table[p].frame == f) {
                 taken = 1;
                 break;
             }
         }
         if (!taken) {
             mem_table[page].frame = f;
+            mem_table[page].valid = 1;
+            mem_table[page].last_access = 0;
             return f;
         }
     }
@@ -52,59 +51,26 @@ int mem_load(int page) {
 }
 
 void mem_print_table(void) {
-    printf("page | frame | valid | last_access\n");
-    printf("-----+-------+-------+------------\n");
+    printf("page | cadre | valide | dernier acces\n");
+    printf("-----+-------+--------+--------------\n");
     for (int p = 0; p < NUM_PAGES; p++) {
-        printf("%4d | %5d | %5d | %11d\n", p, mem_table[p].frame,
-               mem_table[p].valid, mem_table[p].last_access);
+        printf("%4d | %5d | %6d | %13d\n",
+               p, mem_table[p].frame, mem_table[p].valid, mem_table[p].last_access);
     }
 }
 
 void mem_print_frames(const int *frames, int n_frames) {
     printf("[");
-    int first = 1;
     for (int f = 0; f < n_frames; f++) {
-        if (frames[f] < 0) {
-            continue;
-        }
-        if (!first) {
-            printf(", ");
-        }
-        printf("%d", frames[f]);
-        first = 0;
+        printf(" %2d", frames[f]);
     }
-    printf("]");
-}
-
-int mem_translate_demo(void) {
-    mem_init();
-    for (int p = 0; p < NUM_FRAMES; p++) {
-        mem_load(p);
-    }
-    int addrs[12] = {0, 100, 4095, 4096, 8191, 12288,
-                     5000, -1, 65536, 70000, 9000, 300};
-    int ok = 0;
-    for (int i = 0; i < 12; i++) {
-        int phys = -1;
-        int st = mem_translate(addrs[i], &phys);
-        printf("addr %6d -> ", addrs[i]);
-        if (st == MEM_OK) {
-            printf("page %d, cadre %d, physique %d\n",
-                   addrs[i] / PAGE_SIZE, phys / PAGE_SIZE, phys);
-            ok++;
-        } else if (st == MEM_PAGE_FAULT) {
-            printf("DEFAUT DE PAGE (valide, non chargee)\n");
-        } else {
-            printf("ADRESSE INVALIDE\n");
-        }
-    }
-    return ok;
+    printf(" ]");
 }
 
 int mem_read_refs(const char *path, int *refs, int max_refs) {
     FILE *f = fopen(path, "r");
     if (f == NULL) {
-        return -1;
+        return 0;
     }
     int n = 0;
     while (n < max_refs && fscanf(f, "%d", &refs[n]) == 1) {
@@ -112,4 +78,34 @@ int mem_read_refs(const char *path, int *refs, int max_refs) {
     }
     fclose(f);
     return n;
+}
+
+int mem_translate_demo(void) {
+    mem_init();
+    mem_load(0);
+    mem_load(1);
+    mem_print_table();
+    for (;;) {
+        int addr;
+        printf("adresse logique (negative pour quitter) : ");
+        if (scanf("%d", &addr) != 1) {
+            break;
+        }
+        if (addr < 0) {
+            break;
+        }
+        int phys = -1;
+        int rc = mem_translate(addr, &phys);
+        if (rc == MEM_OK) {
+            printf("page %d, offset %d, cadre %d -> physique %d\n",
+                   addr / PAGE_SIZE, addr % PAGE_SIZE,
+                   mem_table[addr / PAGE_SIZE].frame, phys);
+        } else if (rc == MEM_PAGE_FAULT) {
+            printf("page %d : defaut de page (page non chargee)\n", addr / PAGE_SIZE);
+        } else {
+            printf("adresse hors espace d'adressage : %d pages x %d octets\n",
+                   NUM_PAGES, PAGE_SIZE);
+        }
+    }
+    return 0;
 }
