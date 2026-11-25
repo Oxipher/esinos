@@ -1,4 +1,4 @@
-#include "esinos.h"
+#include <stdio.h>
 #include "mem.h"
 
 static int next_use(const int *refs, int n_refs, int from, int page) {
