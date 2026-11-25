@@ -56,7 +56,13 @@ static int disk_ok(void) {
         printf("disk.img absent : choisissez [1] format d'abord\n");
         return 0;
     }
+    int super[2] = { 0, 0 };
+    int ok = (fread(super, sizeof super, 1, f) == 1);
     fclose(f);
+    if (!ok || super[0] != FS_MAGIC) {
+        printf("disk.img non formate : choisissez [1] format d'abord\n");
+        return 0;
+    }
     return 1;
 }
 
