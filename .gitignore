@@ -8,4 +8,5 @@ menu
 disk.img
 *.o
 tests/out.txt
+tests/diff.txt
 .vscode/
