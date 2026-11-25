@@ -1,13 +1,14 @@
-##ifndef ESINOS_H
+#ifndef ESINOS_H
 #define ESINOS_H
 #define MAX_PROCS 8
+#define QCAP 16
 
 typedef struct {
 char name[8];
 int arrival_ms;
-int burst_ms; 
+int burst_ms;
 int priority;
-int finish_ms; 
+int finish_ms;
 } Proc;
 
 
@@ -22,5 +23,6 @@ void fcfs_run(void);
 void sjf_run(void);
 void rr_run(int quantum_ms);
 void prio_run(void);
+void full_demo(int step);
 
 #endif
