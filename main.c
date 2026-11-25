@@ -4,8 +4,6 @@
 #include "mem.h"
 #include "fs.h"
 
-void full_demo(int step);
-
 static const int DEFAULT_REFS[12] = {1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5};
 
 static void flush_stdin(void) {
