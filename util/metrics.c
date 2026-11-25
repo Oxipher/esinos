@@ -9,7 +9,7 @@ void metrics_report(int n) {
     for (int i = 0; i < n; i++) {
         int turnaround = procs[i].finish_ms - procs[i].arrival_ms;
         int waiting = turnaround - procs[i].burst_ms;
-        
+
         sum_turn += turnaround;
         sum_wait += waiting;
     }
