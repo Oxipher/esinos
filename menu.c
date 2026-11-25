@@ -4,9 +4,8 @@
 
 static void fs_menu(void)
 {
-    char name[64];
-    char data[256];
-    char buf[256];
+    char name[FS_NAME_MAX + 2];
+    char data[FS_MAX_FILE_SIZE + 1];
     int choice;
 
     do {
@@ -25,29 +24,45 @@ static void fs_menu(void)
             choice = -1;
         }
 
-        if (choice == 2 || choice == 3 || choice == 4 || choice == 5) {
+        if (choice >= 2 && choice <= 5) {
             printf("name: ");
-            scanf("%63s", name);
+            if (scanf("%11s", name) != 1) {
+                choice = -1;
+            }
         }
 
         if (choice == 1) {
-            printf("fs_format -> %d\n", fs_format());
+            fs_format();
+            printf("fs_format -> done\n");
         } else if (choice == 2) {
             printf("fs_create(\"%s\") -> %d\n", name, fs_create(name));
         } else if (choice == 3) {
             printf("data: ");
             getchar();
-            fgets(data, sizeof data, stdin);
+            if (fgets(data, sizeof data, stdin) == NULL) {
+                data[0] = '\0';
+            }
             data[strcspn(data, "\n")] = '\0';
-            printf("fs_write(\"%s\") -> %d\n", name, fs_write(name, data));
+            printf("fs_write(\"%s\") -> %d\n",
+                   name, fs_write(name, data, (int)strlen(data)));
         } else if (choice == 4) {
-            buf[0] = '\0';
-            printf("fs_read(\"%s\") -> %d\n", name, fs_read(name, buf, sizeof buf));
-            printf("content: \"%s\"\n", buf);
+            int got = fs_read(name, data, FS_MAX_FILE_SIZE);
+            if (got < 0) {
+                printf("fs_read(\"%s\") -> -1 (fichier absent)\n", name);
+            } else {
+                data[got] = '\0';
+                printf("fs_read(\"%s\") -> %d : \"%s\"\n", name, got, data);
+            }
         } else if (choice == 5) {
             printf("fs_delete(\"%s\") -> %d\n", name, fs_delete(name));
         } else if (choice == 6) {
             fs_ls();
         }
     } while (choice != 0);
+}
+
+int main(void)
+{
+    fs_menu();
+    return 0;
 }
