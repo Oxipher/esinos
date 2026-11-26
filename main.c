@@ -3,6 +3,7 @@
 #include "esinos.h"
 #include "mem.h"
 #include "fs.h"
+#include "ui.h"
 
 static const int DEFAULT_REFS[12] = {1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5};
 
@@ -14,7 +15,9 @@ static void flush_stdin(void) {
 static int read_int(const char *prompt) {
     int v;
     for (;;) {
+        ui_color(UI_GREEN);
         printf("%s", prompt);
+        ui_reset();
         if (scanf("%d", &v) == 1) {
             flush_stdin();
             return v;
@@ -22,7 +25,9 @@ static int read_int(const char *prompt) {
         if (feof(stdin)) {
             return 0;
         }
+        ui_color(UI_RED);
         printf("un nombre est attendu, reessayez\n");
+        ui_reset();
         flush_stdin();
         if (feof(stdin)) {
             return 0;
@@ -150,11 +155,18 @@ static void fs_menu(void) {
 }
 
 int main(void) {
+    ui_init();
+    if (ui_is_tty()) {
+        ui_boot();   /* ecran 404 OS : uniquement sur un vrai terminal,
+                        jamais dans un pipe -> run.sh reste identique */
+    }
     for (;;) {
         int c = read_int("[1] ordonnancement CM4 [2] votre charge (data/) [3] memoire\n"
                          "[4] demo complete [5] filesystem [0] quitter\n> ");
         if (c == 0) {
+            ui_color(UI_GREEN);
             printf("au revoir\n");
+            ui_reset();
             break;
         } else if (c == 1) {
             run_cm4();
@@ -168,7 +180,9 @@ int main(void) {
         } else if (c == 5) {
             fs_menu();
         } else {
+            ui_color(UI_RED);
             printf("choix inexistant : le menu se re-propose\n");
+            ui_reset();
         }
     }
     return 0;
