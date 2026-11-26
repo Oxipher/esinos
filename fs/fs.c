@@ -223,3 +223,27 @@ void fs_ls(void) {
         printf("\n");
     }
 }
+
+/* ---- lecture seule pour l'interface demo 404 OS ---- */
+
+int fs_bitmap_get(unsigned char *bits, int nbytes) {
+    FILE *f = fopen(DISK_FILE, "rb");
+    size_t need = (size_t)((DISK_BLOCKS + 7) / 8);
+    int ok;
+    if (f == NULL) { return -1; }
+    fseek(f, BITMAP_BLOCK * BLOCK_SIZE, SEEK_SET);
+    ok = (nbytes >= (int)need && fread(bits, 1, need, f) == need);
+    fclose(f);
+    return ok ? 0 : -1;
+}
+
+int fs_stat_get(const char *name, int *size, int blocks[FS_MAX_BLOCKS]) {
+    int i = find_inode(name);
+    FsInode ino;
+    int b;
+    if (i < 0) { return -1; }
+    inode_read(i, &ino);
+    *size = ino.size;
+    for (b = 0; b < FS_MAX_BLOCKS; b++) { blocks[b] = ino.blocks[b]; }
+    return 0;
+}
