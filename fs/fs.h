@@ -23,4 +23,8 @@ int  fs_read(const char *name, char *out, int max);
 int  fs_delete(const char *name);
 void fs_ls(void);
 
+/* lecture seule pour l'interface demo : carte d'occupation du disque */
+int fs_bitmap_get(unsigned char *bits, int nbytes);
+int fs_stat_get(const char *name, int *size, int blocks[FS_MAX_BLOCKS]);
+
 #endif
