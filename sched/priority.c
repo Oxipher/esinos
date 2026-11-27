@@ -1,23 +1,34 @@
 #include "esinos.h"
 
+/* Non-preemptive priority scheduling: lower number = higher priority */
 void prio_run(void) {
+    int done[MAX_PROCS] = {0};
+    int t = 0;
 
-    for (int i = 0; i < n_procs - 1; i++) {
-        for (int j = 0; j < n_procs - 1 - i; j++) {
-            if (procs[j].priority > procs[j + 1].priority) {
-                Proc tmp = procs[j];
-                procs[j] = procs[j + 1];
-                procs[j + 1] = tmp;
+    for (int k = 0; k < n_procs; k++) {
+        int best = -1;
+
+        for (int i = 0; i < n_procs; i++) {
+            if (!done[i] && procs[i].arrival_ms <= t &&
+                (best < 0 || procs[i].priority < procs[best].priority)) {
+                best = i;
             }
         }
-    }
 
-    int t = 0;
-    for (int i = 0; i < n_procs; i++) {
-        int start = (t > procs[i].arrival_ms) ? t : procs[i].arrival_ms;
-        gantt_add(procs[i].name, start, start + procs[i].burst_ms);
-        t = start + procs[i].burst_ms;
-        procs[i].finish_ms = t;
+        /* CPU idle: jump to the earliest next arrival */
+        if (best < 0) {
+            for (int i = 0; i < n_procs; i++) {
+                if (!done[i] && (best < 0 || procs[i].arrival_ms < procs[best].arrival_ms)) {
+                    best = i;
+                }
+            }
+            t = procs[best].arrival_ms;
+        }
+
+        gantt_add(procs[best].name, t, t + procs[best].burst_ms);
+        t += procs[best].burst_ms;
+        procs[best].finish_ms = t;
+        done[best] = 1;
     }
 
     gantt_finish();
