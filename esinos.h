@@ -20,6 +20,7 @@ extern int n_procs;
 
 /* Workload loading, Gantt rendering, and scheduling metrics */
 void load_workloads(int set); /* 0 = WL_A, 1 = WL_B, 2 = WL_P */
+void sort_by_arrival(void);   /* Stable sort of procs[] by arrival_ms */
 void gantt_add(const char *n, int s, int e); /* Record a Gantt segment [s, e) for process `n` */
 void gantt_finish(void);      /* Finalize and print the accumulated Gantt chart */
 void metrics_report(int n_procs); /* Compute and display waiting and turnaround metrics */
