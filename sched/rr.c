@@ -6,6 +6,8 @@ void rr_run(int quantum_ms) {
     int remaining[MAX_PROCS];
     int t = 0, done = 0, next = 0;
 
+    sort_by_arrival();
+
     for (int i = 0; i < n_procs; i++)
         remaining[i] = procs[i].burst_ms;
 
@@ -17,7 +19,6 @@ void rr_run(int quantum_ms) {
             }
         }
 
-
         if (count == 0) {
             if (next < n_procs) {
                 t = procs[next].arrival_ms;
@@ -26,7 +27,6 @@ void rr_run(int quantum_ms) {
                 break;
             }
         }
-
 
         int p = q[head];
         head = (head + 1) % QCAP;
@@ -37,7 +37,7 @@ void rr_run(int quantum_ms) {
         t += run;
         remaining[p] -= run;
 
-
+        /* processes that arrived during this slice go before the preempted one */
         while (next < n_procs && procs[next].arrival_ms <= t) {
             if (count < QCAP) {
                 q[(head + count++) % QCAP] = next++;
