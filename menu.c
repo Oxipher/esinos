@@ -4,7 +4,7 @@
 
 static void fs_menu(void)
 {
-    char name[FS_NAME_MAX + 2];
+    char name[FS_NAME_MAX + 2] = "";
     char data[FS_MAX_FILE_SIZE + 1];
     int choice;
 
@@ -20,6 +20,7 @@ static void fs_menu(void)
         printf("choice: ");
         if (scanf("%d", &choice) != 1) {
             int c;
+            if (feof(stdin)) { return; }   /* EOF: leave instead of looping forever */
             while ((c = getchar()) != '\n' && c != EOF) { }
             choice = -1;
         }
@@ -27,6 +28,7 @@ static void fs_menu(void)
         if (choice >= 2 && choice <= 5) {
             printf("name: ");
             if (scanf("%11s", name) != 1) {
+                if (feof(stdin)) { return; }
                 choice = -1;
             }
         }
