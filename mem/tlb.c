@@ -15,6 +15,11 @@ double mem_eat(double hit_rate) {
 void mem_tlb_report(const int *refs, int n_refs) {
     int tlb[TLB_SIZE];
 
+    if (n_refs <= 0) {
+        printf("aucune reference : TLB non simulee\n");
+        return;
+    }
+
     /* Initialize all TLB slots as empty (-1) */
     for (int e = 0; e < TLB_SIZE; e++) {
         tlb[e] = -1;
