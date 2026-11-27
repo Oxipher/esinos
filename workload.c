@@ -46,3 +46,16 @@ void load_workloads(int set) {
 
     n_procs = count;
 }
+
+/* Stable insertion sort of procs[] by arrival time */
+void sort_by_arrival(void) {
+    for (int i = 1; i < n_procs; i++) {
+        Proc key = procs[i];
+        int j = i - 1;
+        while (j >= 0 && procs[j].arrival_ms > key.arrival_ms) {
+            procs[j + 1] = procs[j];
+            j--;
+        }
+        procs[j + 1] = key;
+    }
+}
