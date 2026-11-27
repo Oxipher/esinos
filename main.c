@@ -5,13 +5,16 @@
 #include "fs.h"
 #include "ui.h"
 
+/* Fallback page reference sequence when data/references.txt is missing or empty */
 static const int DEFAULT_REFS[12] = {1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5};
 
+/* Discard remaining characters on stdin up to the next newline or EOF */
 static void flush_stdin(void) {
     int c;
     while ((c = getchar()) != '\n' && c != EOF) { }
 }
 
+/* Prompt for an integer and loop until valid numeric input (or EOF) is received */
 static int read_int(const char *prompt) {
     int v;
     for (;;) {
@@ -35,6 +38,7 @@ static int read_int(const char *prompt) {
     }
 }
 
+/* Parse process rows (name, arrival, burst, priority) from `path` into `procs` */
 static int read_workload(const char *path) {
     FILE *f = fopen(path, "r");
     if (f == NULL) {
@@ -62,6 +66,7 @@ static int read_workload(const char *path) {
     return n;
 }
 
+/* Run built-in CM4 scheduling presets across FCFS, SJF, RR, and Priority */
 static void run_cm4(void) {
     load_workloads(0); fcfs_run();
     load_workloads(1); sjf_run();
@@ -69,6 +74,7 @@ static void run_cm4(void) {
     load_workloads(2); prio_run();
 }
 
+/* Reload a custom workload file for each scheduler so state resets between runs */
 static void run_custom(const char *path) {
     if (read_workload(path) == 0) { return; }
     fcfs_run();
@@ -83,6 +89,7 @@ static void run_custom(const char *path) {
     prio_run();
 }
 
+/* Interactive memory submenu: address translation, page replacement, or TLB/EAT */
 static void run_memory(void) {
     int refs[MAX_REFS];
     int n = mem_read_refs("data/references.txt", refs, MAX_REFS);
@@ -109,6 +116,7 @@ static void run_memory(void) {
     }
 }
 
+/* Interactive filesystem submenu for formatting, file CRUD, and directory listing */
 static void fs_menu(void) {
     for (;;) {
         int c = read_int("[fs] [1] format [2] create [3] write [4] read [5] delete [6] ls [0] retour\n> ");
@@ -137,6 +145,7 @@ static void fs_menu(void) {
             if (fgets(data, sizeof data, stdin) == NULL) {
                 continue;
             }
+            /* Strip trailing newline before writing payload to disk */
             data[strcspn(data, "\n")] = '\0';
             printf("fs_write -> %d octets ecrits\n",
                    fs_write(name, data, (int)strlen(data)));
@@ -154,6 +163,7 @@ static void fs_menu(void) {
     }
 }
 
+/* Main entry point: initialize UI, optionally boot banner on TTY, and loop menu */
 int main(void) {
     ui_init();
     if (ui_is_tty()) {
@@ -169,15 +179,24 @@ int main(void) {
             ui_reset();
             break;
         } else if (c == 1) {
+            if (ui_is_tty()) {
+                demo_week_visual(1);   /* gantt anime 404 OS, puis tables techniques */
+            }
             run_cm4();
         } else if (c == 2) {
             run_custom("data/workload.txt");
         } else if (c == 3) {
+            if (ui_is_tty()) {
+                demo_week_visual(2);   /* barres FIFO/LRU/OPT animees */
+            }
             run_memory();
         } else if (c == 4) {
             int step = read_int("[demo] pas a pas (Entree entre chaque etape) (0/1) ?\n> ");
             full_demo(step == 1);
         } else if (c == 5) {
+            if (ui_is_tty()) {
+                demo_week_visual(3);   /* fichiers + disk map animes */
+            }
             fs_menu();
         } else {
             ui_color(UI_RED);
