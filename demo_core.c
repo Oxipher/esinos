@@ -69,54 +69,111 @@ static const char *FRG(void) { return ui_is_tty() ? "░" : "."; }
 
 /* ---------------- WEEK 1 : CPU SCHEDULING ---------------- */
 
-static void week1(void) {
+typedef struct { int p, s, e; } Seg;   /* process index, start, end */
+
+/* Simulate one algorithm (0=FCFS 1=SJF 2=RR 3=PRIO), fill seg[], return count.
+ * procs[] is loaded and finish_ms is set as a side effect. */
+static int sched_sim(int algo, Seg *seg) {
+    static const int WL[4] = { 0, 1, 0, 2 };   /* same workloads as full_demo */
+    int ns = 0, t = 0, k;
+
+    load_workloads(WL[algo]);
+
+    if (algo == 2) {                            /* Round Robin, quantum 4 */
+        int q[QCAP], head = 0, count = 0, rem[MAX_PROCS], done = 0, next = 0;
+        sort_by_arrival();
+        for (k = 0; k < n_procs; k++) { rem[k] = procs[k].burst_ms; }
+        while (done < n_procs) {
+            while (next < n_procs && procs[next].arrival_ms <= t && count < QCAP) {
+                q[(head + count++) % QCAP] = next++;
+            }
+            if (count == 0) {
+                if (next < n_procs) { t = procs[next].arrival_ms; continue; }
+                break;
+            }
+            int p = q[head];
+            head = (head + 1) % QCAP;
+            count--;
+            int run = (4 < rem[p]) ? 4 : rem[p];
+            if (ns < 64) { seg[ns].p = p; seg[ns].s = t; seg[ns].e = t + run; ns++; }
+            t += run;
+            rem[p] -= run;
+            while (next < n_procs && procs[next].arrival_ms <= t && count < QCAP) {
+                q[(head + count++) % QCAP] = next++;
+            }
+            if (rem[p] > 0) {
+                if (count < QCAP) { q[(head + count++) % QCAP] = p; }
+            } else {
+                procs[p].finish_ms = t;
+                done++;
+            }
+        }
+        return ns;
+    }
+
+    /* Non-preemptive: pick the best key among arrived processes */
+    int fin[MAX_PROCS] = {0};
+    for (k = 0; k < n_procs; k++) {
+        int best = -1, i;
+        for (i = 0; i < n_procs; i++) {
+            int key, bkey;
+            if (fin[i] || procs[i].arrival_ms > t) { continue; }
+            key = (algo == 0) ? procs[i].arrival_ms
+                : (algo == 1) ? procs[i].burst_ms : procs[i].priority;
+            if (best >= 0) {
+                bkey = (algo == 0) ? procs[best].arrival_ms
+                     : (algo == 1) ? procs[best].burst_ms : procs[best].priority;
+                if (key >= bkey) { continue; }
+            }
+            best = i;
+        }
+        if (best < 0) {                         /* CPU idle: jump to next arrival */
+            for (i = 0; i < n_procs; i++) {
+                if (!fin[i] && (best < 0 || procs[i].arrival_ms < procs[best].arrival_ms)) {
+                    best = i;
+                }
+            }
+            t = procs[best].arrival_ms;
+        }
+        seg[ns].p = best; seg[ns].s = t; seg[ns].e = t + procs[best].burst_ms; ns++;
+        t += procs[best].burst_ms;
+        procs[best].finish_ms = t;
+        fin[best] = 1;
+    }
+    return ns;
+}
+
+/* Draw one framed Gantt chart + metrics table */
+static void week1_one(int algo) {
     static const char *PAL[4] = { UI_CYAN, UI_YELLOW, UI_MAGENTA, UI_WHITE };
-    int idx[MAX_PROCS], start[MAX_PROCS];
-    int i, j, end_prev, span, scale, cursor;
+    static const char *TITLE[4] = {
+        "SCHEDULING - FCFS", "SCHEDULING - SJF",
+        "SCHEDULING - ROUND ROBIN (q=4)", "SCHEDULING - PRIORITY"
+    };
+    Seg seg[64];
+    int ns = sched_sim(algo, seg);
+    int i, x, cursor = 0, span = 0, scale;
     double sumw = 0.0, sumt = 0.0;
 
-    load_workloads(0);
-    for (i = 0; i < n_procs; i++) { idx[i] = i; }
-    /* FCFS : tri stable par temps d'arrivee */
-    for (i = 1; i < n_procs; i++) {
-        int t = idx[i];
-        for (j = i; j > 0 && procs[idx[j - 1]].arrival_ms > procs[t].arrival_ms; j--) {
-            idx[j] = idx[j - 1];
-        }
-        idx[j] = t;
-    }
-
-    /* Compute non-preemptive start and finish times */
-    end_prev = 0;
-    for (i = 0; i < n_procs; i++) {
-        int k = idx[i];
-        int a = procs[k].arrival_ms;
-        start[k] = end_prev > a ? end_prev : a;
-        end_prev = start[k] + procs[k].burst_ms;
-        procs[k].finish_ms = end_prev;
-    }
-
-    span = end_prev;
+    for (i = 0; i < ns; i++) { if (seg[i].e > span) { span = seg[i].e; } }
     scale = span > 50 ? 2 : 1;
 
-    ui_frame_begin("SCHEDULING - FCFS");
+    ui_frame_begin(TITLE[algo]);
     ui_color(UI_GREEN);
     printf("   GANTT CHART\n");
     ui_reset();
     printf("   ");
-    cursor = 0;
-    for (i = 0; i < n_procs; i++) {
-        int k = idx[i], x;
-        int gap = (start[k] - cursor) / scale;
-        int w = procs[k].burst_ms / scale;
+    for (i = 0; i < ns; i++) {
+        int gap = (seg[i].s - cursor) / scale;
+        int w = (seg[i].e - seg[i].s) / scale;
         if (w < 1) { w = 1; }
         for (x = 0; x < gap; x++) { fputs(FRG(), stdout); }
-        ui_color(PAL[i % 4]);
-        printf("%s", procs[k].name);
+        ui_color(PAL[seg[i].p % 4]);
+        printf("%s", procs[seg[i].p].name);
         for (x = 0; x < w; x++) { fputs(BLK(), stdout); }
         ui_reset();
         ui_sleep(80);
-        cursor = start[k] + procs[k].burst_ms;
+        cursor = seg[i].e;
     }
     printf("\n   0%*d ms\n\n", span / scale + 2, span);
 
@@ -136,68 +193,14 @@ static void week1(void) {
     ui_frame_end();
 }
 
+static void week1(void) {
+    for (int a = 0; a < 4; a++) { week1_one(a); }
+}
+
 /* ---------------- WEEK 2 : MEMORY ---------------- */
 
 static void bar(const char *label, const char *color, int faults) {
     int x;
     printf("   %-8s ", label);
     ui_color(color);
-    for (x = 0; x < faults; x++) { fputs(BLK(), stdout); ui_sleep(40); }
-    ui_reset();
-    printf(" %d\n", faults);
-}
-
-static void week2(void) {
-    int refs[MAX_REFS];
-    int n = load_refs(refs);
-
-    ui_frame_begin("MEMORY - PAGE REPLACEMENT");
-    printf("   %d references, 3 frames\n", n);
-    bar("FIFO", UI_YELLOW,  mem_run_fifo(refs, n, 3, 0));
-    bar("LRU",  UI_CYAN,    mem_run_lru(refs, n, 3, 0));
-    bar("OPT",  UI_MAGENTA, mem_run_optimal(refs, n, 3, 0));
-    printf("   Belady : FIFO %d defauts (3 cadres) -> %d (4 cadres)\n",
-           mem_run_fifo(refs, n, 3, 0), mem_run_fifo(refs, n, 4, 0));
-    ui_frame_end();
-}
-
-/* ---------------- WEEK 3 : FILE SYSTEM ---------------- */
-
-static void week3(void) {
-    static const char MSG[] = "demo 404 OS";
-    unsigned char bits[(DISK_BLOCKS + 7) / 8];
-    int size = 0, blocks[FS_MAX_BLOCKS];
-    int b;
-
-    ui_frame_begin("FILE SYSTEM");
-    fs_format();
-    fs_create("notes");
-    fs_write("notes", MSG, (int)strlen(MSG));
-    fs_ls();
-
-    if (fs_bitmap_get(bits, (int)sizeof bits) == 0) {
-        printf("   DISK MAP (%s = used, %s = free)\n   ", BLK(), FRG());
-        for (b = 0; b < DISK_BLOCKS; b++) {
-            int used = (bits[b / 8] >> (b % 8)) & 1;
-            ui_color(used ? UI_GREEN : UI_DIM);
-            fputs(used ? BLK() : FRG(), stdout);
-            ui_reset();
-            if ((b + 1) % 32 == 0) { printf("\n   "); }
-            ui_sleep(10);
-        }
-        printf("\n");
-    }
-    if (fs_stat_get("notes", &size, blocks) == 0) {
-        printf("   notes : %d octets, blocs", size);
-        for (b = 0; b < FS_MAX_BLOCKS && blocks[b] >= 0; b++) { printf(" %d", blocks[b]); }
-        printf("\n");
-    }
-    ui_frame_end();
-}
-
-/* Entry point shared by ./demo and ./esinos */
-void demo_week_visual(int which) {
-    if (which == 1)      { week1(); }
-    else if (which == 2) { week2(); }
-    else if (which == 3) { week3(); }
-}
+    for (x = 0; x
