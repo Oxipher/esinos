@@ -2,18 +2,20 @@
 #include <string.h>
 #include "fs.h"
 
+/* Disk layout constants (in blocks) */
 #define SUPER_BLOCK 0
 #define BITMAP_BLOCK 1
 #define INODE_START 2
 #define INODE_BYTES ((int)sizeof(FsInode))
 #define INODE_BLOCKS ((INODE_COUNT * INODE_BYTES + BLOCK_SIZE - 1) / BLOCK_SIZE)
 #define DATA_START (INODE_START + INODE_BLOCKS)
-#define FS_MAGIC 0x4553494E /* "ESIN" en ASCII */
+#define FS_MAGIC 0x4553494E /* "ESIN" in ASCII */
 
 /* fs.h promet le layout compact : sans lui, l'arithmetique des blocs
  * d'inodes devient fausse. Le compilateur refuse alors de batir. */
 _Static_assert(INODE_BYTES == 32, "FsInode doit rester compact : 32 octets");
 
+/* Read a single fixed-size block from the disk image file */
 static int block_read(int b, void *buf) {
     FILE *f = fopen(DISK_FILE, "rb");
     if (f == NULL) { return -1; }
@@ -23,6 +25,7 @@ static int block_read(int b, void *buf) {
     return ok ? 0 : -1;
 }
 
+/* Write a single fixed-size block back into the disk image file */
 static int block_write(int b, const void *buf) {
     FILE *f = fopen(DISK_FILE, "r+b");
     if (f == NULL) { return -1; }
@@ -42,6 +45,7 @@ static int inode_read(int i, FsInode *ino) {
     return 0;
 }
 
+/* Update one inode slot inside its shared disk block */
 static int inode_write(int i, const FsInode *ino) {
     char blk[BLOCK_SIZE];
     int b = INODE_START + i / 2;
@@ -50,6 +54,7 @@ static int inode_write(int i, const FsInode *ino) {
     return block_write(b, blk);
 }
 
+/* Verify that DISK_FILE exists and starts with the expected magic header */
 static int disk_ok(void) {
     FILE *f = fopen(DISK_FILE, "rb");
     if (f == NULL) {
@@ -66,6 +71,7 @@ static int disk_ok(void) {
     return 1;
 }
 
+/* Return the inode index for an active file matching `name`, or -1 if not found */
 static int find_inode(const char *name) {
     FsInode ino;
     for (int i = 0; i < INODE_COUNT; i++) {
@@ -75,6 +81,7 @@ static int find_inode(const char *name) {
     return -1;
 }
 
+/* Zero-fill and initialize superblock and free-block bitmap */
 void fs_format(void) {
     FILE *f = fopen(DISK_FILE, "wb");
     if (f == NULL) { printf("disk.img : impossible a creer\n"); return; }
@@ -99,6 +106,7 @@ void fs_format(void) {
            DISK_BLOCKS - DATA_START);
 }
 
+/* Allocate a free inode entry for a new empty file */
 int fs_create(const char *name) {
     if (!disk_ok()) { return -1; }
     if ((int)strlen(name) > FS_NAME_MAX) {
@@ -106,6 +114,7 @@ int fs_create(const char *name) {
         return -1;
     }
     FsInode ino;
+    /* Reject duplicate active filenames */
     for (int i = 0; i < INODE_COUNT; i++) {
         inode_read(i, &ino);
         if (ino.used && strcmp(ino.name, name) == 0) {
@@ -113,6 +122,7 @@ int fs_create(const char *name) {
             return -1;
         }
     }
+    /* Find the first unused inode slot and initialize it */
     for (int i = 0; i < INODE_COUNT; i++) {
         inode_read(i, &ino);
         if (!ino.used) {
@@ -128,6 +138,7 @@ int fs_create(const char *name) {
     return -1;
 }
 
+/* Replace file contents: release old blocks, allocate new ones, and write data */
 int fs_write(const char *name, const char *data, int size) {
     if (!disk_ok()) { return -1; }
     int i = find_inode(name);
@@ -149,6 +160,8 @@ int fs_write(const char *name, const char *data, int size) {
             ino.blocks[b] = -1;
         }
     }
+
+    /* Scan data blocks in order for free bits until enough blocks are claimed */
     int need = (size + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int allocated = 0;
     for (int b = DATA_START; b < DISK_BLOCKS && allocated < need; b++) {
@@ -159,6 +172,8 @@ int fs_write(const char *name, const char *data, int size) {
         }
     }
     if (allocated < need) { printf("disque plein pour %s\n", name); return -1; }
+
+    /* Copy data into each allocated block, zero-padding the final partial block */
     for (int b = 0; b < need; b++) {
         int chunk = size - b * BLOCK_SIZE;
         if (chunk > BLOCK_SIZE) { chunk = BLOCK_SIZE; }
@@ -166,12 +181,15 @@ int fs_write(const char *name, const char *data, int size) {
         memcpy(blk, data + b * BLOCK_SIZE, chunk);
         if (block_write(ino.blocks[b], blk) != 0) { return -1; }
     }
+
+    /* Persist updated file size, inode block pointers, and bitmap */
     ino.size = size;
     if (inode_write(i, &ino) != 0) { return -1; }
     if (block_write(BITMAP_BLOCK, bitmap) != 0) { return -1; }
     return size;
 }
 
+/* Read up to `max` bytes from `name` into `out` and return bytes read */
 int fs_read(const char *name, char *out, int max) {
     if (!disk_ok()) { return -1; }
     int i = find_inode(name);
@@ -189,6 +207,7 @@ int fs_read(const char *name, char *out, int max) {
     return got;
 }
 
+/* Free a file's data blocks in the bitmap and clear its inode entry */
 int fs_delete(const char *name) {
     if (!disk_ok()) { return -1; }
     int i = find_inode(name);
@@ -208,6 +227,7 @@ int fs_delete(const char *name) {
     return 0;
 }
 
+/* Print a table of active files, their sizes, and allocated block numbers */
 void fs_ls(void) {
     if (!disk_ok()) { return; }
     FsInode ino;
@@ -226,6 +246,7 @@ void fs_ls(void) {
 
 /* ---- lecture seule pour l'interface demo 404 OS ---- */
 
+/* Copy raw bitmap bytes into caller buffer for UI inspection */
 int fs_bitmap_get(unsigned char *bits, int nbytes) {
     FILE *f = fopen(DISK_FILE, "rb");
     size_t need = (size_t)((DISK_BLOCKS + 7) / 8);
@@ -237,6 +258,7 @@ int fs_bitmap_get(unsigned char *bits, int nbytes) {
     return ok ? 0 : -1;
 }
 
+/* Copy size and block list of `name` into caller output parameters */
 int fs_stat_get(const char *name, int *size, int blocks[FS_MAX_BLOCKS]) {
     int i = find_inode(name);
     FsInode ino;
