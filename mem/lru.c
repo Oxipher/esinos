@@ -23,6 +23,12 @@ int mem_run_lru(const int *refs, int n_refs, int n_frames, int verbose) {
     /* Process each page reference in sequence */
     for (int i = 0; i < n_refs; i++) {
         int p = refs[i];
+
+        /* mem_table has only NUM_PAGES entries: reject out-of-range pages */
+        if (p < 0 || p >= NUM_PAGES) {
+            return -1;
+        }
+
         /* Record logical timestamp (1-based) for this access */
         mem_table[p].last_access = i + 1;
 
