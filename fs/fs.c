@@ -75,7 +75,7 @@ static int disk_ok(void) {
 static int find_inode(const char *name) {
     FsInode ino;
     for (int i = 0; i < INODE_COUNT; i++) {
-        inode_read(i, &ino);
+        if (inode_read(i, &ino) != 0) { return -1; }
         if (ino.used && strcmp(ino.name, name) == 0) { return i; }
     }
     return -1;
@@ -116,7 +116,7 @@ int fs_create(const char *name) {
     FsInode ino;
     /* Reject duplicate active filenames */
     for (int i = 0; i < INODE_COUNT; i++) {
-        inode_read(i, &ino);
+        if (inode_read(i, &ino) != 0) { return -1; }
         if (ino.used && strcmp(ino.name, name) == 0) {
             printf("%s existe deja\n", name);
             return -1;
@@ -124,7 +124,7 @@ int fs_create(const char *name) {
     }
     /* Find the first unused inode slot and initialize it */
     for (int i = 0; i < INODE_COUNT; i++) {
-        inode_read(i, &ino);
+        if (inode_read(i, &ino) != 0) { return -1; }
         if (!ino.used) {
             memset(&ino, 0, sizeof ino);
             ino.used = 1;
@@ -143,12 +143,12 @@ int fs_write(const char *name, const char *data, int size) {
     if (!disk_ok()) { return -1; }
     int i = find_inode(name);
     if (i < 0) { printf("%s : fichier absent\n", name); return -1; }
-    if (size > FS_MAX_FILE_SIZE) {
+    if (size < 0 || size > FS_MAX_FILE_SIZE) {
         printf("%d octets : plus grand que %d\n", size, FS_MAX_FILE_SIZE);
         return -1;
     }
     FsInode ino;
-    inode_read(i, &ino);
+    if (inode_read(i, &ino) != 0) { return -1; }
     char bitmap[BLOCK_SIZE];
     char blk[BLOCK_SIZE];
     if (block_read(BITMAP_BLOCK, bitmap) != 0) { return -1; }
@@ -195,7 +195,7 @@ int fs_read(const char *name, char *out, int max) {
     int i = find_inode(name);
     if (i < 0) { return -1; }
     FsInode ino;
-    inode_read(i, &ino);
+    if (inode_read(i, &ino) != 0) { return -1; }
     int got = (ino.size < max) ? ino.size : max;
     char blk[BLOCK_SIZE];
     for (int b = 0; b * BLOCK_SIZE < got; b++) {
@@ -213,7 +213,7 @@ int fs_delete(const char *name) {
     int i = find_inode(name);
     if (i < 0) { printf("%s : fichier absent\n", name); return -1; }
     FsInode ino;
-    inode_read(i, &ino);
+    if (inode_read(i, &ino) != 0) { return -1; }
     char bitmap[BLOCK_SIZE];
     if (block_read(BITMAP_BLOCK, bitmap) != 0) { return -1; }
     for (int b = 0; b < FS_MAX_BLOCKS; b++) {
@@ -234,7 +234,7 @@ void fs_ls(void) {
     printf("inode | nom | taille | blocs\n");
     printf("------+--------------+--------+----------------\n");
     for (int i = 0; i < INODE_COUNT; i++) {
-        inode_read(i, &ino);
+        if (inode_read(i, &ino) != 0) { return; }
         if (!ino.used) { continue; }
         printf("%6d| %-12s | %6d |", i, ino.name, ino.size);
         for (int b = 0; b < FS_MAX_BLOCKS && ino.blocks[b] >= 0; b++) {
@@ -264,7 +264,7 @@ int fs_stat_get(const char *name, int *size, int blocks[FS_MAX_BLOCKS]) {
     FsInode ino;
     int b;
     if (i < 0) { return -1; }
-    inode_read(i, &ino);
+    if (inode_read(i, &ino) != 0) { return -1; }
     *size = ino.size;
     for (b = 0; b < FS_MAX_BLOCKS; b++) { blocks[b] = ino.blocks[b]; }
     return 0;
