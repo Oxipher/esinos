@@ -106,3 +106,4 @@ static void week1(void) {
     /* Draw colored Gantt bar segments with subtle step delay */
     ui_color(UI_GREEN);
     printf("   GANTT CHART\n");
+}
