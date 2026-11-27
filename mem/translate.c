@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include "mem.h"
 
+/* Global page table mapping virtual pages to physical frames */
 PageTableEntry mem_table[NUM_PAGES];
 
+/* Mark all page table entries as invalid and unmapped */
 void mem_init(void) {
     for (int p = 0; p < NUM_PAGES; p++) {
         mem_table[p].frame = -1;
@@ -11,27 +13,35 @@ void mem_init(void) {
     }
 }
 
+/* Translate a logical address into a physical address via the page table */
 int mem_translate(int logical_addr, int *phys_addr) {
+    /* Split logical address into page number and byte offset within the page */
     int page = logical_addr / PAGE_SIZE;
     int offset = logical_addr % PAGE_SIZE;
 
+    /* Reject negative or out-of-range logical addresses */
     if (logical_addr < 0 || page >= NUM_PAGES) {
         return MEM_BAD_ADDR;
     }
+    /* Signal a page fault if the target page is not currently mapped */
     if (!mem_table[page].valid) {
         return MEM_PAGE_FAULT;
     }
+    /* Combine mapped physical frame base and page offset */
     *phys_addr = mem_table[page].frame * PAGE_SIZE + offset;
     return MEM_OK;
 }
 
+/* Load a virtual page into the first available physical frame */
 int mem_load(int page) {
     if (page < 0 || page >= NUM_PAGES) {
         return -1;
     }
+    /* Already resident: return its existing frame index */
     if (mem_table[page].valid) {
         return mem_table[page].frame;
     }
+    /* Scan physical frames for one not currently claimed by any valid page */
     for (int f = 0; f < NUM_FRAMES; f++) {
         int taken = 0;
         for (int p = 0; p < NUM_PAGES; p++) {
@@ -40,6 +50,7 @@ int mem_load(int page) {
                 break;
             }
         }
+        /* Claim free frame `f` for `page` */
         if (!taken) {
             mem_table[page].frame = f;
             mem_table[page].valid = 1;
@@ -47,9 +58,11 @@ int mem_load(int page) {
             return f;
         }
     }
+    /* No free frame available */
     return -1;
 }
 
+/* Print current contents of the page table */
 void mem_print_table(void) {
     printf("page | cadre | valide | dernier acces\n");
     printf("-----+-------+--------+--------------\n");
@@ -59,6 +72,7 @@ void mem_print_table(void) {
     }
 }
 
+/* Print current values stored in `frames[0..n_frames - 1]` */
 void mem_print_frames(const int *frames, int n_frames) {
     printf("[");
     for (int f = 0; f < n_frames; f++) {
@@ -67,6 +81,7 @@ void mem_print_frames(const int *frames, int n_frames) {
     printf(" ]");
 }
 
+/* Read up to `max_refs` integer page numbers from file at `path` */
 int mem_read_refs(const char *path, int *refs, int max_refs) {
     FILE *f = fopen(path, "r");
     if (f == NULL) {
@@ -80,6 +95,7 @@ int mem_read_refs(const char *path, int *refs, int max_refs) {
     return n;
 }
 
+/* Interactive loop demonstrating page loading and logical-to-physical translation */
 int mem_translate_demo(void) {
     mem_init();
     mem_load(0);
