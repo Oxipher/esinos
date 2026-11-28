@@ -1,12 +1,12 @@
-esinos
-main
-test_memory
-demo
-fs_check
-test_fs
-menu
-disk.img
-*.o
-tests/out.txt
-tests/diff.txt
-.vscode/
+esinos          # main OS binary
+main            # main executable
+test_memory     # memory lab test binary
+demo            # demo binary
+fs_check        # file system check binary
+test_fs         # file system test binary
+menu            # menu binary
+disk.img        # virtual disk image
+*.o             # compiled object files
+tests/out.txt   # test standard output
+tests/diff.txt  # test diff output
+.vscode/        # VS Code workspace settings
